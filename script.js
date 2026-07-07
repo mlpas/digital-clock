@@ -54,7 +54,7 @@ class TimezoneClock {
         this.saveTimezones();
         input.value = '';
         this.render();
-        this.startClock(); // RESTART CLOCK AFTER ADDING
+        this.startClock();
         errorMsg.classList.remove('show');
     }
 
@@ -62,7 +62,7 @@ class TimezoneClock {
         this.timezones = this.timezones.filter(t => t !== tz);
         this.saveTimezones();
         this.render();
-        this.startClock(); // RESTART CLOCK AFTER REMOVING
+        this.startClock();
     }
 
     clearAll() {
@@ -70,7 +70,7 @@ class TimezoneClock {
             this.timezones = ['UTC'];
             this.saveTimezones();
             this.render();
-            this.startClock(); // RESTART CLOCK AFTER CLEARING
+            this.startClock();
         }
     }
 
@@ -174,7 +174,7 @@ class TimezoneClock {
         grid.innerHTML = this.timezones.map((tz, index) => {
             const data = this.getTimeData(tz);
             return `
-                <div class="clock-card" data-tz="${tz}">
+                <div class="clock-card" data-index="${index}">
                     <div class="timezone-name">
                         <span>${this.formatTimezoneDisplay(tz)}</span>
                         <button class="remove-btn" onclick="timezoneClock.removeTimezone('${tz}')">×</button>
@@ -215,8 +215,9 @@ class TimezoneClock {
     }
 
     updateAllClocks() {
-        this.timezones.forEach(tz => {
-            const card = document.querySelector(`[data-tz="${tz}"]`);
+        this.timezones.forEach((tz, index) => {
+            // Use data-index to find cards - more reliable than data-tz
+            const card = document.querySelector(`[data-index="${index}"]`);
             if (card) {
                 const timeDisplay = card.querySelector('.time-display');
                 if (timeDisplay) {
