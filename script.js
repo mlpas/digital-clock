@@ -17,6 +17,17 @@ class TimezoneClock {
         document.getElementById('timezoneInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addTimezone();
         });
+        
+        // Bind quick-add buttons
+        this.bindQuickAddButtons();
+    }
+
+    bindQuickAddButtons() {
+        document.querySelectorAll('.quick-add').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.addTimezone(e.currentTarget.dataset.tz);
+            });
+        });
     }
 
     loadTimezones() {
@@ -54,6 +65,7 @@ class TimezoneClock {
         this.saveTimezones();
         input.value = '';
         this.render();
+        this.bindQuickAddButtons(); // REBIND AFTER RENDER
         this.startClock();
         errorMsg.classList.remove('show');
     }
@@ -62,6 +74,7 @@ class TimezoneClock {
         this.timezones = this.timezones.filter(t => t !== tz);
         this.saveTimezones();
         this.render();
+        this.bindQuickAddButtons(); // REBIND AFTER RENDER
         this.startClock();
     }
 
@@ -70,6 +83,7 @@ class TimezoneClock {
             this.timezones = ['UTC'];
             this.saveTimezones();
             this.render();
+            this.bindQuickAddButtons(); // REBIND AFTER RENDER
             this.startClock();
         }
     }
