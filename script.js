@@ -54,6 +54,7 @@ class TimezoneClock {
         this.saveTimezones();
         input.value = '';
         this.render();
+        this.startClock(); // RESTART CLOCK AFTER ADDING
         errorMsg.classList.remove('show');
     }
 
@@ -61,6 +62,7 @@ class TimezoneClock {
         this.timezones = this.timezones.filter(t => t !== tz);
         this.saveTimezones();
         this.render();
+        this.startClock(); // RESTART CLOCK AFTER REMOVING
     }
 
     clearAll() {
@@ -68,6 +70,7 @@ class TimezoneClock {
             this.timezones = ['UTC'];
             this.saveTimezones();
             this.render();
+            this.startClock(); // RESTART CLOCK AFTER CLEARING
         }
     }
 
@@ -80,10 +83,8 @@ class TimezoneClock {
 
     getUTCOffset(timezone) {
         try {
-            // Use a known UTC date as reference
             const date = new Date();
             
-            // Get timezone string representation
             const tzString = date.toLocaleString('en-US', {
                 timeZone: timezone,
                 year: 'numeric',
@@ -95,7 +96,6 @@ class TimezoneClock {
                 hour12: false
             });
 
-            // Get UTC string representation
             const utcString = date.toLocaleString('en-US', {
                 timeZone: 'UTC',
                 year: 'numeric',
@@ -107,21 +107,17 @@ class TimezoneClock {
                 hour12: false
             });
 
-            // Parse both strings
             const tzMatch = tzString.match(/(\d+)\/(\d+)\/(\d+),\s+(\d+):(\d+):(\d+)/);
             const utcMatch = utcString.match(/(\d+)\/(\d+)\/(\d+),\s+(\d+):(\d+):(\d+)/);
 
             if (!tzMatch || !utcMatch) return 'UTC±00:00';
 
-            // Create dates from parsed values
             const [, tzMonth, tzDay, tzYear, tzHour, tzMin, tzSec] = tzMatch;
             const [, utcMonth, utcDay, utcYear, utcHour, utcMin, utcSec] = utcMatch;
 
-            // Create dates in UTC to calculate difference
             const tzDate = new Date(Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMin, tzSec));
             const utcDate = new Date(Date.UTC(utcYear, utcMonth - 1, utcDay, utcHour, utcMin, utcSec));
 
-            // Calculate difference
             const diffMinutes = (tzDate - utcDate) / (1000 * 60);
             const sign = diffMinutes >= 0 ? '+' : '-';
             const absMinutes = Math.abs(diffMinutes);
@@ -199,24 +195,18 @@ class TimezoneClock {
                 </div>
             `;
         }).join('');
-
-        // Re-attach quick-add buttons after render
-        document.querySelectorAll('.quick-add').forEach(btn => {
-            btn.removeEventListener('click', this.quickAddListener);
-            btn.addEventListener('click', (e) => {
-                this.addTimezone(e.currentTarget.dataset.tz);
-            });
-        });
     }
 
     startClock() {
+        // Clear existing interval
         if (this.clockInterval) {
             clearInterval(this.clockInterval);
+            this.clockInterval = null;
         }
 
-        // Update on next second boundary for sync
+        // Sync to next second boundary
         const now = new Date();
-        const delay = 1000 - (now.getMilliseconds());
+        const delay = 1000 - now.getMilliseconds();
 
         setTimeout(() => {
             this.updateAllClocks();
