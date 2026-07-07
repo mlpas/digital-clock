@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Timezone Digital Clock</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 Global Time Zone Clock</h1>
+        
+        <div class="controls">
+            <input type="text" id="timezoneInput" placeholder="Add timezone (e.g., America/New_York)">
+            <button id="addBtn" class="btn btn-primary">Add Timezone</button>
+            <button id="clearBtn" class="btn btn-danger">Clear All</button>
+        </div>
+
+        <div class="suggestions">
+            <p><strong>Quick Add Popular Timezones:</strong></p>
+            <div class="suggestion-buttons">
+                <button class="quick-add" data-tz="America/New_York">🗽 New York</button>
+                <button class="quick-add" data-tz="Europe/London">🇬🇧 London</button>
+                <button class="quick-add" data-tz="Europe/Paris">🇫🇷 Paris</button>
+                <button class="quick-add" data-tz="Asia/Tokyo">🇯🇵 Tokyo</button>
+                <button class="quick-add" data-tz="Asia/Shanghai">🇨🇳 Shanghai</button>
+                <button class="quick-add" data-tz="Australia/Sydney">🇦🇺 Sydney</button>
+                <button class="quick-add" data-tz="Asia/Dubai">🇦🇪 Dubai</button>
+                <button class="quick-add" data-tz="America/Los_Angeles">🌊 Los Angeles</button>
+                <button class="quick-add" data-tz="Asia/Singapore">🇸🇬 Singapore</button>
+                <button class="quick-add" data-tz="America/Toronto">🍁 Toronto</button>
+            </div>
+        </div>
+
+        <div class="clocks-grid" id="clocksGrid">
+            <!-- Clock cards will be inserted here -->
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
