@@ -1,6 +1,7 @@
 class TimezoneClock {
     constructor() {
         this.timezones = this.loadTimezones();
+        this.clockInterval = null;
         this.init();
     }
 
@@ -13,17 +14,8 @@ class TimezoneClock {
     setupEventListeners() {
         document.getElementById('addBtn').addEventListener('click', () => this.addTimezone());
         document.getElementById('clearBtn').addEventListener('click', () => this.clearAll());
-        
-        document.querySelectorAll('.quick-add').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.addTimezone(e.currentTarget.dataset.tz);
-            });
-        });
-
         document.getElementById('timezoneInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.addTimezone();
-            }
+            if (e.key === 'Enter') this.addTimezone();
         });
     }
 
@@ -46,7 +38,6 @@ class TimezoneClock {
             return;
         }
 
-        // Validate timezone
         try {
             new Date().toLocaleString('en-US', { timeZone: timezone });
         } catch (e) {
@@ -63,7 +54,6 @@ class TimezoneClock {
         this.saveTimezones();
         input.value = '';
         this.render();
-        this.startClock();
         errorMsg.classList.remove('show');
     }
 
@@ -85,13 +75,68 @@ class TimezoneClock {
         const errorMsg = document.getElementById('errorMessage');
         errorMsg.textContent = message;
         errorMsg.classList.add('show');
-        setTimeout(() => {
-            errorMsg.classList.remove('show');
-        }, 3000);
+        setTimeout(() => errorMsg.classList.remove('show'), 3000);
+    }
+
+    getUTCOffset(timezone) {
+        try {
+            // Use a known UTC date as reference
+            const date = new Date();
+            
+            // Get timezone string representation
+            const tzString = date.toLocaleString('en-US', {
+                timeZone: timezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+
+            // Get UTC string representation
+            const utcString = date.toLocaleString('en-US', {
+                timeZone: 'UTC',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+
+            // Parse both strings
+            const tzMatch = tzString.match(/(\d+)\/(\d+)\/(\d+),\s+(\d+):(\d+):(\d+)/);
+            const utcMatch = utcString.match(/(\d+)\/(\d+)\/(\d+),\s+(\d+):(\d+):(\d+)/);
+
+            if (!tzMatch || !utcMatch) return 'UTC±00:00';
+
+            // Create dates from parsed values
+            const [, tzMonth, tzDay, tzYear, tzHour, tzMin, tzSec] = tzMatch;
+            const [, utcMonth, utcDay, utcYear, utcHour, utcMin, utcSec] = utcMatch;
+
+            // Create dates in UTC to calculate difference
+            const tzDate = new Date(Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMin, tzSec));
+            const utcDate = new Date(Date.UTC(utcYear, utcMonth - 1, utcDay, utcHour, utcMin, utcSec));
+
+            // Calculate difference
+            const diffMinutes = (tzDate - utcDate) / (1000 * 60);
+            const sign = diffMinutes >= 0 ? '+' : '-';
+            const absMinutes = Math.abs(diffMinutes);
+            const hours = Math.floor(absMinutes / 60);
+            const minutes = Math.round(absMinutes % 60);
+
+            return `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        } catch (e) {
+            return 'UTC±00:00';
+        }
     }
 
     getTimeData(timezone) {
         const date = new Date();
+        
         const timeString = date.toLocaleString('en-US', {
             timeZone: timezone,
             hour12: false,
@@ -110,93 +155,11 @@ class TimezoneClock {
 
         const offset = this.getUTCOffset(timezone);
 
-        return {
-            time: timeString,
-            date: dateString,
-            offset: offset
-        };
-    }
-
-    getUTCOffset(timezone) {
-        try {
-            const date = new Date();
-            
-            // Get the time in the target timezone
-            const tzFormatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: timezone,
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            });
-
-            const tzParts = tzFormatter.formatToParts(date);
-            const tzObject = {};
-            tzParts.forEach(part => {
-                if (part.type !== 'literal') {
-                    tzObject[part.type] = part.value;
-                }
-            });
-
-            // Create a date object from the parts
-            const tzDate = new Date(
-                `${tzObject.year}-${tzObject.month}-${tzObject.day}T${tzObject.hour}:${tzObject.minute}:${tzObject.second}Z`
-            );
-
-            // Get UTC time
-            const utcDate = new Date(date.toLocaleString('en-US', { 
-                timeZone: 'UTC',
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            }));
-
-            // Calculate the difference
-            let diffMinutes = (tzDate - utcDate) / (1000 * 60);
-            
-            // For more accuracy, use the actual time difference
-            // by checking what UTC time corresponds to this timezone time
-            const testDate = new Date('2026-01-15T12:00:00Z');
-            const testTzString = testDate.toLocaleString('en-US', {
-                timeZone: timezone,
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            });
-
-            // Parse the test timezone string
-            const testTzParts = testTzString.match(/(\d+)\/(\d+)\/(\d+),\s(\d+):(\d+):(\d+)/);
-            if (testTzParts) {
-                const [, month, day, year, hour, min, sec] = testTzParts;
-                const testLocalDate = new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
-                diffMinutes = (testLocalDate - testDate) / (1000 * 60);
-            }
-
-            const sign = diffMinutes >= 0 ? '+' : '-';
-            const hours = Math.floor(Math.abs(diffMinutes) / 60);
-            const minutes = Math.abs(diffMinutes) % 60;
-            return `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        } catch (e) {
-            return 'UTC±00:00';
-        }
+        return { time: timeString, date: dateString, offset: offset };
     }
 
     formatTimezoneDisplay(tz) {
-        // Convert underscore to space and format nicely
-        return tz.split('/').map(part => {
-            return part.replace(/_/g, ' ');
-        }).join(', ');
+        return tz.split('/').map(part => part.replace(/_/g, ' ')).join(', ');
     }
 
     render() {
@@ -215,10 +178,10 @@ class TimezoneClock {
         grid.innerHTML = this.timezones.map((tz, index) => {
             const data = this.getTimeData(tz);
             return `
-                <div class="clock-card" data-index="${index}">
+                <div class="clock-card" data-tz="${tz}">
                     <div class="timezone-name">
                         <span>${this.formatTimezoneDisplay(tz)}</span>
-                        <button class="remove-btn" data-tz="${tz}">×</button>
+                        <button class="remove-btn" onclick="timezoneClock.removeTimezone('${tz}')">×</button>
                     </div>
                     <div class="date-display">${data.date}</div>
                     <div class="time-display">${data.time}</div>
@@ -237,34 +200,42 @@ class TimezoneClock {
             `;
         }).join('');
 
-        // Re-attach remove button listeners
-        document.querySelectorAll('.remove-btn').forEach(btn => {
+        // Re-attach quick-add buttons after render
+        document.querySelectorAll('.quick-add').forEach(btn => {
+            btn.removeEventListener('click', this.quickAddListener);
             btn.addEventListener('click', (e) => {
-                this.removeTimezone(e.target.dataset.tz);
+                this.addTimezone(e.currentTarget.dataset.tz);
             });
         });
     }
 
     startClock() {
-        // Clear any existing intervals
         if (this.clockInterval) {
             clearInterval(this.clockInterval);
         }
 
-        this.clockInterval = setInterval(() => {
-            this.timezones.forEach((tz, index) => {
-                const card = document.querySelector(`[data-index="${index}"]`);
-                if (card) {
-                    const timeDisplay = card.querySelector('.time-display');
-                    if (timeDisplay) {
-                        const data = this.getTimeData(tz);
-                        timeDisplay.textContent = data.time;
-                    }
+        // Update on next second boundary for sync
+        const now = new Date();
+        const delay = 1000 - (now.getMilliseconds());
+
+        setTimeout(() => {
+            this.updateAllClocks();
+            this.clockInterval = setInterval(() => this.updateAllClocks(), 1000);
+        }, delay);
+    }
+
+    updateAllClocks() {
+        this.timezones.forEach(tz => {
+            const card = document.querySelector(`[data-tz="${tz}"]`);
+            if (card) {
+                const timeDisplay = card.querySelector('.time-display');
+                if (timeDisplay) {
+                    const data = this.getTimeData(tz);
+                    timeDisplay.textContent = data.time;
                 }
-            });
-        }, 1000);
+            }
+        });
     }
 }
 
-// Initialize the clock app
 const timezoneClock = new TimezoneClock();
