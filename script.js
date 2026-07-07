@@ -117,14 +117,79 @@ class TimezoneClock {
     }
 
     getUTCOffset(timezone) {
-        const date = new Date();
-        const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-        const tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
-        const offset = (tzDate - utcDate) / (1000 * 60 * 60);
-        const sign = offset >= 0 ? '+' : '-';
-        const hours = Math.floor(Math.abs(offset));
-        const minutes = Math.round((Math.abs(offset) - hours) * 60);
-        return `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        try {
+            // Use Intl API to get the correct offset
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: timezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+
+            const date = new Date();
+            const parts = formatter.formatToParts(date);
+            
+            // Reconstruct the date in the target timezone
+            const tzDateString = parts
+                .filter(part => part.type !== 'literal')
+                .map(part => part.value)
+                .join('-');
+
+            const tzDate = new Date(tzDateString);
+            const utcDate = new Date(date.toLocaleString('en-US', { 
+                timeZone: 'UTC',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }));
+
+            const offset = (date - utcDate) / (1000 * 60 * 60);
+            const sign = offset >= 0 ? '+' : '-';
+            const hours = Math.floor(Math.abs(offset));
+            const minutes = Math.round((Math.abs(offset) - hours) * 60);
+            return `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        } catch (e) {
+            // Fallback method
+            const timeFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: timezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+
+            const date = new Date();
+            const parts = timeFormatter.formatToParts(date);
+            
+            const year = parts.find(p => p.type === 'year').value;
+            const month = parts.find(p => p.type === 'month').value;
+            const day = parts.find(p => p.type === 'day').value;
+            const hour = parts.find(p => p.type === 'hour').value;
+            const minute = parts.find(p => p.type === 'minute').value;
+
+            const tzDate = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`);
+            const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 
+                                    date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds());
+
+            const diffMs = date - (tzDate - utcDate);
+            const offset = -diffMs / (1000 * 60 * 60);
+            
+            const sign = offset >= 0 ? '+' : '-';
+            const hours = Math.floor(Math.abs(offset));
+            const minutes = Math.round((Math.abs(offset) - hours) * 60);
+            return `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
     }
 
     formatTimezoneDisplay(tz) {
